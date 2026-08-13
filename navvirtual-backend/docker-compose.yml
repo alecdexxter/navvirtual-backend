@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: navvirtual-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: navvirtual
+      POSTGRES_USER: navvirtual_user
+      POSTGRES_PASSWORD: navvirtual_pass
+    ports:
+      - "5433:5432"   # uso 5433 para no chocar con tu proyecto de cine (5432)
+    volumes:
+      - navvirtual_data:/var/lib/postgresql/data
+
+volumes:
+  navvirtual_data:
