@@ -49,4 +49,9 @@ public class ProductoController {
         productoService.eliminar(id, auth.getName());
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/buffet/{buffetId}")
+    public ResponseEntity<List<ProductoResponse>> listarPorBuffet(@PathVariable Long buffetId) {
+        return ResponseEntity.ok(productoService.listarPorBuffet(buffetId));
+    }
 }

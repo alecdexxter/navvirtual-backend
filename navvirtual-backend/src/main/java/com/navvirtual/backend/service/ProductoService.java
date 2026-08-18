@@ -85,6 +85,9 @@ public class ProductoService {
         productoRepository.save(producto);
         return toResponse(producto);
     }
+    public List<ProductoResponse> listarPorBuffet(Long buffetId) {
+        return productoRepository.findByBuffetId(buffetId).stream().map(this::toResponse).toList();
+    }
 
     public void eliminar(Long id, String email) {
         Producto producto = buscarProducto(id);
