@@ -18,5 +18,5 @@ public class ProductoResponse {
     private Long standId;
     private Long vendedorId;
     private Long buffetId;
-    private long eventoId;
+    private Long eventoId;
 }
