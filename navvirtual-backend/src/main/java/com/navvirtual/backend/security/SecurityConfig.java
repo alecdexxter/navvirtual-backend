@@ -36,6 +36,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/eventos/publicos/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/configuracion").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/stands/evento/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()   // <-- agregar esta línea
                         .anyRequest().authenticated()
                 )

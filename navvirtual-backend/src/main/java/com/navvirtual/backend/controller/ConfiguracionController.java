@@ -26,11 +26,25 @@ public class ConfiguracionController {
         return ResponseEntity.ok(config);
     }
 
-    @PutMapping
+    @PostMapping("/imagenes")
     @PreAuthorize("hasRole('SUPERADMIN')")
-    public ResponseEntity<ConfiguracionSitio> actualizar(@RequestBody Map<String, String> body) {
-        ConfiguracionSitio config = repository.findById(1L).orElse(new ConfiguracionSitio(1L, null));
-        config.setImagenPortadaUrl(body.get("imagenPortadaUrl"));
+    public ResponseEntity<ConfiguracionSitio> agregarImagen(@RequestBody Map<String, String> body) {
+        ConfiguracionSitio config = repository.findById(1L).orElseGet(() -> {
+            ConfiguracionSitio nueva = new ConfiguracionSitio();
+            nueva.setId(1L);
+            return nueva;
+        });
+        config.getImagenesPortada().add(body.get("url"));
+        repository.save(config);
+        return ResponseEntity.ok(config);
+    }
+
+    @DeleteMapping("/imagenes")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<ConfiguracionSitio> quitarImagen(@RequestParam String url) {
+        ConfiguracionSitio config = repository.findById(1L)
+                .orElseThrow(() -> new IllegalStateException("Configuración no encontrada"));
+        config.getImagenesPortada().remove(url);
         repository.save(config);
         return ResponseEntity.ok(config);
     }
