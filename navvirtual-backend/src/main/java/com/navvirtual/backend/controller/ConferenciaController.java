@@ -28,4 +28,10 @@ public class ConferenciaController {
     public ResponseEntity<List<ConferenciaResponse>> listarPorEvento(@PathVariable Long eventoId) {
         return ResponseEntity.ok(conferenciaService.listarPorEvento(eventoId));
     }
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        conferenciaService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
 }

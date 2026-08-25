@@ -37,6 +37,12 @@ public class ConferenciaService {
         return conferenciaRepository.findByEventoIdOrderByHorarioAsc(eventoId)
                 .stream().map(this::toResponse).toList();
     }
+    public void eliminar(Long id) {
+        if (!conferenciaRepository.existsById(id)) {
+            throw new IllegalStateException("Conferencia no encontrada");
+        }
+        conferenciaRepository.deleteById(id);
+    }
 
     private ConferenciaResponse toResponse(Conferencia c) {
         return new ConferenciaResponse(c.getId(), c.getTitulo(), c.getDescripcion(), c.getTipo(), c.getHorario());
