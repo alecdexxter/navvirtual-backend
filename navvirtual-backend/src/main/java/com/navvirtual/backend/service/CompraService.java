@@ -19,7 +19,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class CompraService {
     private final CompraRepository compraRepository;
     private final ProductoRepository productoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final EmailService emailService;
 
     public CompraResponse procesarCompra(CompraRequest request, String emailComprador) {
         Usuario usuario = usuarioRepository.findByEmail(emailComprador)
@@ -86,6 +89,7 @@ public class CompraService {
                 case "approved" -> {
                     compra.setEstado(Compra.Estado.PAGADA);
                     compra.setCodigoBoleta(generarCodigoBoleta());
+                    notificarVentaAVendedores(detalles, compra);
                 }
                 case "rejected" -> compra.setEstado(Compra.Estado.RECHAZADA);
                 default -> compra.setEstado(Compra.Estado.PENDIENTE); // in_process, pending, etc.
@@ -125,5 +129,24 @@ public class CompraService {
     private CompraResponse toResponse(Compra compra) {
         return new CompraResponse(compra.getId(), compra.getTotal(), compra.getEstado(),
                 compra.getCodigoBoleta(), compra.getFecha());
+    }
+
+    private void notificarVentaAVendedores(List<DetalleCompra> detalles, Compra compra) {
+        // Agrupamos por vendedor para mandar un solo email aunque compre varios productos del mismo stand
+        Map<Usuario, List<DetalleCompra>> porVendedor = detalles.stream()
+                .collect(Collectors.groupingBy(d -> d.getProducto().getVendedor()));
+
+        porVendedor.forEach((vendedor, items) -> {
+            StringBuilder cuerpo = new StringBuilder();
+            cuerpo.append("¡Tenés una venta nueva!\n\n");
+            cuerpo.append("Boleta: ").append(compra.getCodigoBoleta()).append("\n\n");
+            cuerpo.append("Productos:\n");
+            items.forEach(d -> cuerpo.append("- ")
+                    .append(d.getProducto().getNombre())
+                    .append(" x").append(d.getCantidad())
+                    .append(" ($").append(d.getPrecioUnitario()).append(" c/u)\n"));
+
+            emailService.enviar(vendedor.getEmail(), "Nueva venta en Navegación Virtual", cuerpo.toString());
+        });
     }
 }
