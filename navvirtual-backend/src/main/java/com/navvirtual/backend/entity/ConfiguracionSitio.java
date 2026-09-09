@@ -12,6 +12,7 @@ public class ConfiguracionSitio {
 
     @Id
     private Long id = 1L;
+    private Long eventoDestacadoId;
 
     @ElementCollection
     @CollectionTable(name = "configuracion_sitio_imagenes", joinColumns = @JoinColumn(name = "configuracion_id"))

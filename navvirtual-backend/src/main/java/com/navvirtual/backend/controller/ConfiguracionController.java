@@ -48,4 +48,17 @@ public class ConfiguracionController {
         repository.save(config);
         return ResponseEntity.ok(config);
     }
+
+    @PutMapping("/evento-destacado")
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<ConfiguracionSitio> actualizarEventoDestacado(@RequestBody Map<String, Long> body) {
+        ConfiguracionSitio config = repository.findById(1L).orElseGet(() -> {
+            ConfiguracionSitio nueva = new ConfiguracionSitio();
+            nueva.setId(1L);
+            return nueva;
+        });
+        config.setEventoDestacadoId(body.get("eventoId"));
+        repository.save(config);
+        return ResponseEntity.ok(config);
+    }
 }

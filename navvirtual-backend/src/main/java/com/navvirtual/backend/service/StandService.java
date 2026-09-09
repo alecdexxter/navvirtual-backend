@@ -10,6 +10,7 @@ import com.navvirtual.backend.repository.StandRepository;
 import com.navvirtual.backend.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
@@ -22,7 +23,7 @@ public class StandService {
     private final EventoRepository eventoRepository;
     private final UsuarioRepository usuarioRepository;
 
-    // SUPERADMIN crea el "cascarón" del stand y le asigna un dueño
+    @Transactional
     public StandResponse crear(StandRequest request) {
         Evento evento = eventoRepository.findById(request.getEventoId())
                 .orElseThrow(() -> new IllegalStateException("Evento no encontrado"));
@@ -43,33 +44,27 @@ public class StandService {
         standRepository.save(stand);
         return toResponse(stand);
     }
+
+    @Transactional(readOnly = true)
     public List<StandResponse> listarPorEvento(Long eventoId) {
         return standRepository.findByEventoId(eventoId).stream().map(this::toResponse).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<StandResponse> listarMisStands(String email) {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalStateException("Usuario no encontrado"));
 
-
-        List<Stand> propios = standRepository.findByPropietarioId(usuario.getId());
-        List<Stand> comoEmpleado = standRepository.findAll().stream()
-                .filter(s -> s.getEmpleados().stream().anyMatch(u -> u.getId().equals(usuario.getId())))
-                .toList();
-
-        java.util.Set<Long> idsVistos = new java.util.HashSet<>();
-        List<Stand> todos = new java.util.ArrayList<>();
-        for (Stand s : propios) if (idsVistos.add(s.getId())) todos.add(s);
-        for (Stand s : comoEmpleado) if (idsVistos.add(s.getId())) todos.add(s);
-
-        return todos.stream().map(this::toResponse).toList();
+        List<Stand> stands = standRepository.findByPropietarioIdOrEmpleadoId(usuario.getId());
+        return stands.stream().map(this::toResponse).toList();
     }
 
+    @Transactional(readOnly = true)
     public StandResponse obtenerPorId(Long id) {
         return toResponse(buscarStand(id));
     }
 
-    // Dueño, empleado asignado, o superadmin pueden editar el contenido
+    @Transactional
     public StandResponse actualizar(Long id, StandRequest request, String email) {
         Stand stand = buscarStand(id);
         verificarAccesoStand(stand, email);
@@ -82,7 +77,8 @@ public class StandService {
         standRepository.save(stand);
         return toResponse(stand);
     }
-    //asignar propietario
+
+    @Transactional
     public StandResponse asignarPropietario(Long standId, Long propietarioId) {
         Stand stand = buscarStand(standId);
         Usuario propietario = usuarioRepository.findById(propietarioId)
@@ -93,7 +89,7 @@ public class StandService {
         return toResponse(stand);
     }
 
-    // Solo el dueño (o superadmin) puede asignar/quitar empleados
+    @Transactional
     public StandResponse asignarEmpleado(Long standId, Long usuarioId, String emailSolicitante) {
         Stand stand = buscarStand(standId);
         verificarEsDuenoOSuperadmin(stand, emailSolicitante);
@@ -106,6 +102,7 @@ public class StandService {
         return toResponse(stand);
     }
 
+    @Transactional
     public StandResponse quitarEmpleado(Long standId, Long usuarioId, String emailSolicitante) {
         Stand stand = buscarStand(standId);
         verificarEsDuenoOSuperadmin(stand, emailSolicitante);
@@ -115,15 +112,13 @@ public class StandService {
         return toResponse(stand);
     }
 
-    // ---- Métodos de acceso, reutilizables desde ProductoService y PreguntaService ----
-
     public Stand buscarStand(Long id) {
         return standRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("Stand no encontrado"));
     }
 
     public void verificarAccesoStand(Stand stand, String email) {
-        boolean esSuperadmin = tieneRol(email, "ROLE_SUPERADMIN");
+        boolean esSuperadmin = tieneRol(email, "SUPERADMIN") || tieneRol(email, "ROLE_SUPERADMIN");
         boolean esDueno = stand.getPropietario() != null && stand.getPropietario().getEmail().equals(email);
         boolean esEmpleado = stand.getEmpleados().stream().anyMatch(u -> u.getEmail().equals(email));
 
@@ -133,7 +128,7 @@ public class StandService {
     }
 
     private void verificarEsDuenoOSuperadmin(Stand stand, String email) {
-        boolean esSuperadmin = tieneRol(email, "ROLE_SUPERADMIN");
+        boolean esSuperadmin = tieneRol(email, "SUPERADMIN") || tieneRol(email, "ROLE_SUPERADMIN");
         boolean esDueno = stand.getPropietario() != null && stand.getPropietario().getEmail().equals(email);
 
         if (!esSuperadmin && !esDueno) {
@@ -144,15 +139,21 @@ public class StandService {
     private boolean tieneRol(String email, String nombreRol) {
         Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
         if (usuario == null) return false;
-        return usuario.getRoles().stream().anyMatch(r -> r.getNombre().equals(nombreRol));
+        return usuario.getRoles().stream().anyMatch(r -> r.getNombre().equalsIgnoreCase(nombreRol));
     }
 
     private StandResponse toResponse(Stand stand) {
-        Set<Long> empleadosIds = stand.getEmpleados().stream().map(Usuario::getId).collect(java.util.stream.Collectors.toSet());
+        Set<Long> empleadosIds = stand.getEmpleados() != null
+                ? stand.getEmpleados().stream().map(Usuario::getId).collect(java.util.stream.Collectors.toSet())
+                : Set.of();
+
         return new StandResponse(
-                stand.getId(), stand.getNombre(), stand.getDescripcion(),
-                stand.getImagenPortadaUrl(), stand.getVideoUrl(),
-                stand.getEvento().getId(),
+                stand.getId(),
+                stand.getNombre(),
+                stand.getDescripcion(),
+                stand.getImagenPortadaUrl(),
+                stand.getVideoUrl(),
+                stand.getEvento() != null ? stand.getEvento().getId() : null,
                 stand.getPropietario() != null ? stand.getPropietario().getId() : null,
                 empleadosIds
         );

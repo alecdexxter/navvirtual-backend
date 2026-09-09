@@ -30,6 +30,11 @@ public class GlobalExceptionHandler {
         return construirRespuesta(HttpStatus.UNAUTHORIZED, "Email o contraseña incorrectos");
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleIntegridad(org.springframework.dao.DataIntegrityViolationException ex) {
+        return construirRespuesta(HttpStatus.CONFLICT, "No se puede eliminar: tiene compras u otros registros asociados");
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new HashMap<>();
